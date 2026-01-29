@@ -1,1 +1,64 @@
-<script type="text/javascript" src="https://form.jotform.com/jsform/253110872430447"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legacy Wealth Blueprint Application Form</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .form-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+        }
+
+        .form-container iframe {
+            border: none;
+            height: 100%;
+        }
+
+        /* Desktop styles */
+        @media (min-width: 769px) {
+            .form-container iframe {
+                width: 65%;
+                max-width: 800px;
+            }
+        }
+
+        /* Mobile styles */
+        @media (max-width: 768px) {
+            .form-container {
+                height: 100vh;
+                height: 100dvh; /* Dynamic viewport height for mobile */
+            }
+
+            .form-container iframe {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <iframe
+            id="JotFormIFrame-253110872430447"
+            title="Legacy Wealth Blueprint Application Form"
+            src="https://form.jotform.com/253110872430447"
+            allowfullscreen
+            allow="geolocation; microphone; camera; fullscreen"
+        ></iframe>
+    </div>
+</body>
+</html>
