@@ -43,14 +43,33 @@
     <!-- Redirect to ClickFunnels after booking -->
     <script>
     window.addEventListener('message', function(event) {
-        // Only accept messages from OnceHub
-        if (event.origin.indexOf('oncehub.com') === -1) return;
+        // Log all postMessages for debugging (remove after testing)
+        console.log('postMessage received:', event.origin, event.data);
+
+        // Accept messages from OnceHub or ScheduleOnce
+        if (event.origin.indexOf('oncehub.com') === -1 && event.origin.indexOf('scheduleonce.com') === -1) return;
 
         try {
             var data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+            console.log('Parsed OnceHub data:', data);
 
-            // Check for booking confirmation event
-            if (data && (data.action === 'scheduled' || data.event === 'booking_created' || data.type === 'booking_confirmed')) {
+            // Check for booking confirmation event - try multiple possible event names
+            var isBookingEvent = data && (
+                data.action === 'scheduled' ||
+                data.action === 'booked' ||
+                data.action === 'confirmed' ||
+                data.event === 'booking_created' ||
+                data.event === 'scheduled' ||
+                data.event === 'booked' ||
+                data.type === 'booking_confirmed' ||
+                data.type === 'scheduled' ||
+                data.bookingCreated ||
+                data.scheduled ||
+                (data.message && data.message.indexOf('scheduled') !== -1) ||
+                (data.message && data.message.indexOf('booked') !== -1)
+            );
+
+            if (isBookingEvent) {
                 var customerEmail = data.email || data.customer_email || (data.data && data.data.email) || '';
                 var customerName = data.name || data.customer_name || (data.data && data.data.name) || '';
                 var customerPhone = data.phone || data.mobile_phone || data.customer_mobile_phone || (data.data && data.data.mobile_phone) || '';
