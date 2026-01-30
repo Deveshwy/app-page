@@ -56,6 +56,29 @@
                 var phone = encodeURIComponent(data.phone || data.mobile_phone || data.customer_mobile_phone || (data.data && data.data.mobile_phone) || '');
 
                 var redirectUrl = 'https://www.managemoney101.com/callconfirmation?email=' + email + '&name=' + name + '&phone=' + phone;
+
+                // Pass through UTM parameters
+                var urlParams = new URLSearchParams(window.location.search);
+                var utmParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
+                utmParams.forEach(function(param) {
+                    var value = urlParams.get(param);
+                    if (value) redirectUrl += '&' + param + '=' + encodeURIComponent(value);
+                });
+
+                // Pass through Facebook click ID
+                var fbclid = urlParams.get('fbclid');
+                if (fbclid) redirectUrl += '&fbclid=' + encodeURIComponent(fbclid);
+
+                // Pass through Facebook cookies if available
+                var getCookie = function(name) {
+                    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+                    return match ? match[2] : null;
+                };
+                var fbp = getCookie('_fbp');
+                var fbc = getCookie('_fbc');
+                if (fbp) redirectUrl += '&_fbp=' + encodeURIComponent(fbp);
+                if (fbc) redirectUrl += '&_fbc=' + encodeURIComponent(fbc);
+
                 window.location.href = redirectUrl;
             }
         } catch (e) {
