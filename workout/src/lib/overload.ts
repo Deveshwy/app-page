@@ -452,10 +452,10 @@ export function remainingWhy(why: string, setsLogged: number, setsTarget: number
 export function describeCard(card: LiftCard): string {
   const { min, max } = card.range;
   const last = card.last
-    ? `last ${card.last.date} (${card.last.daysAgo}d): ${formatSets(card.last.sets)} | sets=${card.last.stats.sets} min=${card.last.stats.min} max=${card.last.stats.max} median=${card.last.stats.median} dropOff=${card.last.stats.dropOff} spread=${card.last.stats.spread} even=${card.last.stats.even ? "yes" : "no"} weight=${card.last.stats.weight ?? "none"}`
+    ? `last ${formatPretty(card.last.date)} (${card.last.date}, ${card.last.daysAgo}d): ${formatSets(card.last.sets)} | sets=${card.last.stats.sets} min=${card.last.stats.min} max=${card.last.stats.max} median=${card.last.stats.median} dropOff=${card.last.stats.dropOff} spread=${card.last.stats.spread} even=${card.last.stats.even ? "yes" : "no"} weight=${card.last.stats.weight ?? "none"}`
     : "last: none";
   const prev = card.previous
-    ? `prev ${card.previous.date}: ${formatSets(card.previous.sets)}`
+    ? `prev ${formatPretty(card.previous.date)} (${card.previous.date}): ${formatSets(card.previous.sets)}`
     : "prev: none";
   return `${card.exerciseId} [${card.kind} ${min}–${max}] ${card.name}\n  ${last}\n  ${prev}`;
 }

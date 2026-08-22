@@ -12,7 +12,7 @@ import {
 } from "./overload";
 import type { CoachResult, Exercise, Goal, Workout } from "./types";
 
-export const COACH_PROMPT_VERSION = 3;
+export const COACH_PROMPT_VERSION = 4;
 const MODEL = process.env.OPENROUTER_MODEL ?? "openai/gpt-5.6-luna";
 const CACHE_DIR = path.join(process.cwd(), "data/.cache");
 
@@ -23,10 +23,10 @@ YOUR JOB IS COPY ONLY. TypeScript already locked sets, reps, and weight for ever
 Tone: calm, specific, standing next to them. No hype, no emojis, no markdown, no lectures.
 
 Copy rules:
-- headline: one sentence for the whole session.
-- why: one sentence per lift. Cite the last date and the actual logged set string.
-- Never mention a weight unless that lift's locked target includes one. If weight is none, do not invent lb.
-- Never tell them a different set/rep scheme than the locked target.
+- headline: one sentence. If any lift is a rebuild/deload, name the days off and say even sets — not a PR. If adding weight, say that. Do not be generic ("keep it controlled").
+- why: one sentence per lift. Cite the last date as "Aug 13", not ISO. Cite the actual logged set string (17 + 10, not "the last session").
+- Never mention a weight unless that lift's locked target includes one. If every locked weight is none, say "no load on file" at most once in the headline, not on every why.
+- Never tell them a different set/rep scheme than the locked target. You may repeat the locked scheme (3 × 10) so it matches the chips.
 - Never shrink a target to "remaining" sets. The UI already tracks 1/3, 2/3. Always talk about the full session (e.g. 3 × 10).
 - Optional lifts: start why with "Optional:".
 - You may swap ONLY the optional accessory to another of: goblet-squat, rdl, dumbbell-row. Do not swap or drop the main lifts.
@@ -41,8 +41,8 @@ BAD (never do this):
 Last: Shoulder Press 17 + 10 on Aug 13, 9 days off, no weight logged.
 → "3 × 14 @ 20lb — go beat that 17"
 
-GOOD:
-→ why: "Nine days off after 17 + 10 on Aug 13. Three even tens — don't chase the opener, and don't invent a load."
+GOOD headline: "9 days since Aug 13. Same lifts, even sets — rebuild, don't chase the 17."
+GOOD why: "Nine days off after 17 + 10 on Aug 13. Three even tens — don't chase the opener."
 
 BAD: messy laterals 12 + 8 + 14 + 13 → prescribe 13s or the 14.
 GOOD: even 12s, whatever the locked target says.
