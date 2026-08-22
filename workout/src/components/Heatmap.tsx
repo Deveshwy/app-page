@@ -29,6 +29,7 @@ export default function Heatmap({
   const weeks = Array.from({ length: 53 }, (_, week) =>
     Array.from({ length: 7 }, (_, dow) => addDays(start, week * 7 + dow)),
   );
+  const days = weeks.flat();
 
   const months: { week: number; label: string }[] = [];
   let lastMonth = "";
@@ -66,57 +67,57 @@ export default function Heatmap({
         </p>
       </div>
 
-      <div className="overflow-x-auto pb-1">
-        <div className="inline-flex gap-1">
-          <div className="mt-4 flex flex-col gap-1 pr-1 text-[10px] leading-[10px] text-neutral-600">
-            <span className="h-2.5" />
-            <span className="h-2.5">M</span>
-            <span className="h-2.5" />
-            <span className="h-2.5">W</span>
-            <span className="h-2.5" />
-            <span className="h-2.5">F</span>
-            <span className="h-2.5" />
+      <div className="grid grid-cols-[14px_minmax(0,1fr)] gap-x-2">
+        <div className="mt-4 grid grid-rows-7 gap-[3px] text-[9px] leading-none text-neutral-600">
+          <span />
+          <span className="self-center">M</span>
+          <span />
+          <span className="self-center">W</span>
+          <span />
+          <span className="self-center">F</span>
+          <span />
+        </div>
+        <div>
+          <div
+            className="relative mb-1 h-3 text-[10px] text-neutral-600"
+            style={{ display: "grid", gridTemplateColumns: "repeat(53, minmax(0, 1fr))" }}
+          >
+            {months.map((month) => (
+              <span key={month.week} style={{ gridColumnStart: month.week + 1 }}>
+                {month.label}
+              </span>
+            ))}
           </div>
-          <div>
-            <div className="relative mb-1 h-3 text-[10px] text-neutral-600">
-              {months.map((month) => (
-                <span
-                  key={month.week}
-                  className="absolute"
-                  style={{ left: month.week * 14 }}
-                >
-                  {month.label}
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-1">
-              {weeks.map((week, i) => (
-                <div key={i} className="flex flex-col gap-1">
-                  {week.map((date) => {
-                    const future = date > today;
-                    const reps = map.get(date)?.reps ?? 0;
-                    const active = date === selected;
-                    return (
-                      <button
-                        key={date}
-                        type="button"
-                        disabled={future}
-                        title={
-                          future
-                            ? date
-                            : `${formatPretty(date)}${reps ? ` · ${reps} reps` : " · rest"}`
-                        }
-                        onClick={() => onSelect(date)}
-                        className={`h-2.5 w-2.5 rounded-[2px] ${
-                          active ? "ring-1 ring-gold" : ""
-                        } ${future ? "cursor-default opacity-30" : "hover:ring-1 hover:ring-neutral-500"}`}
-                        style={{ background: future ? "#111" : LEVEL[level(reps)] }}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
+          <div
+            className="grid gap-[3px]"
+            style={{
+              gridTemplateRows: "repeat(7, minmax(11px, 1fr))",
+              gridTemplateColumns: "repeat(53, minmax(0, 1fr))",
+              gridAutoFlow: "column",
+            }}
+          >
+            {days.map((date) => {
+              const future = date > today;
+              const reps = map.get(date)?.reps ?? 0;
+              const active = date === selected;
+              return (
+                <button
+                  key={date}
+                  type="button"
+                  disabled={future}
+                  title={
+                    future
+                      ? date
+                      : `${formatPretty(date)}${reps ? ` · ${reps} reps` : " · rest"}`
+                  }
+                  onClick={() => onSelect(date)}
+                  className={`aspect-square w-full min-h-[11px] rounded-[2px] ${
+                    active ? "ring-1 ring-gold" : ""
+                  } ${future ? "cursor-default opacity-30" : "hover:ring-1 hover:ring-neutral-400"}`}
+                  style={{ background: future ? "#111" : LEVEL[level(reps)] }}
+                />
+              );
+            })}
           </div>
         </div>
       </div>

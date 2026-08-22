@@ -6,11 +6,13 @@ import type { Workout } from "@/lib/types";
 export default function TodayLog({
   workout,
   selected,
+  flash,
   onSelect,
   onRemove,
 }: {
   workout: Workout;
   selected: string | null;
+  flash: { exerciseId: string; index: number } | null;
   onSelect: (id: string) => void;
   onRemove: (exerciseId: string, index: number) => void;
 }) {
@@ -57,7 +59,11 @@ export default function TodayLog({
                     type="button"
                     title="remove set"
                     onClick={() => onRemove(exercise.id, index)}
-                    className="text-gold hover:line-through"
+                    className={`text-gold hover:line-through ${
+                      flash?.exerciseId === exercise.id && flash.index === index
+                        ? "underline decoration-gold"
+                        : ""
+                    }`}
                   >
                     {mixed && set.weight != null
                       ? `${set.reps}@${formatNum(set.weight)}`

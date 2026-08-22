@@ -14,9 +14,13 @@ export default function Tracker() {
   const [date, setDate] = useState(todayISO);
   const [state, setState] = useState<AppState | null>(null);
   const [coach, setCoach] = useState<CoachResult | null>(null);
+  const [coachLoading, setCoachLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [flash, setFlash] = useState<{ exerciseId: string; index: number } | null>(
+    null,
+  );
 
   const refresh = useCallback(async (day: string) => {
     const res = await fetch(`/api/state?date=${day}`, { cache: "no-store" });
@@ -49,13 +53,16 @@ export default function Tracker() {
 
   useEffect(() => {
     let gone = false;
-    setCoach(null);
+    setCoachLoading(true);
     fetch(`/api/coach?date=${date}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((next: CoachResult) => {
         if (!gone) setCoach(next);
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (!gone) setCoachLoading(false);
+      });
     return () => {
       gone = true;
     };
@@ -86,7 +93,12 @@ export default function Tracker() {
         body: JSON.stringify({ date, exerciseId: selected, reps, weight }),
       });
       if (!res.ok) throw new Error("could not save set");
-      await refresh(date);
+      const next = await refresh(date);
+      const log = next.today.exercises.find((item) => item.id === selected);
+      if (log) {
+        setFlash({ exerciseId: selected, index: log.sets.length - 1 });
+        window.setTimeout(() => setFlash(null), 1200);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "save failed");
     } finally {
@@ -128,32 +140,49 @@ export default function Tracker() {
     lastWeight(todayLog?.sets ?? []) ?? last?.log.sets.at(-1)?.weight ?? goal?.weight ?? null;
 
   return (
-    <main className="mx-auto min-h-screen max-w-3xl px-6 py-10">
-      <header className="mb-8 flex items-center justify-between gap-4">
+    <main className="mx-auto min-h-screen max-w-3xl px-6 py-8">
+      <header className="mb-6 flex items-center justify-between gap-4">
         <div>
           <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">workout</p>
-          <div className="relative mt-1">
-            <h1 className="text-2xl tracking-tight text-white">{formatLong(date)}</h1>
+          <h1 className="mt-1 text-2xl tracking-tight text-white">{formatLong(date)}</h1>
+        </div>
+        <div className="flex items-center gap-1 text-neutral-400">
+          <button
+            type="button"
+            onClick={() => setDate(addDays(date, -1))}
+            className="h-9 w-9 rounded-md hover:bg-white/5 hover:text-gold"
+            aria-label="previous day"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            onClick={() => setDate(todayISO())}
+            className="h-9 rounded-md px-3 text-[12px] hover:bg-white/5 hover:text-gold"
+          >
+            today
+          </button>
+          <label className="relative h-9 w-9 cursor-pointer rounded-md hover:bg-white/5 hover:text-gold">
+            <span className="flex h-full items-center justify-center" aria-hidden>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                <rect x="3" y="5" width="18" height="16" rx="2" />
+                <path d="M3 10h18M8 3v4M16 3v4" />
+              </svg>
+            </span>
             <input
               type="date"
               value={date}
               onChange={(event) => setDate(event.target.value)}
               className="absolute inset-0 cursor-pointer opacity-0"
+              aria-label="pick date"
             />
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-neutral-400">
-          <button type="button" onClick={() => setDate(addDays(date, -1))} className="px-2 hover:text-gold">
-            ←
-          </button>
-          <button type="button" onClick={() => setDate(todayISO())} className="text-[12px] hover:text-gold">
-            today
-          </button>
+          </label>
           <button
             type="button"
             onClick={() => setDate(addDays(date, 1))}
             disabled={date >= todayISO()}
-            className="px-2 hover:text-gold disabled:opacity-30"
+            className="h-9 w-9 rounded-md hover:bg-white/5 hover:text-gold disabled:opacity-30"
+            aria-label="next day"
           >
             →
           </button>
@@ -171,7 +200,11 @@ export default function Tracker() {
         <div className="h-24 animate-pulse rounded-lg bg-neutral-900" />
       )}
 
-      <p className="mb-6 mt-8 text-[15px] leading-6 text-neutral-300">
+      <p
+        className={`mb-5 mt-7 text-[15px] leading-6 ${
+          coachLoading && !coach ? "animate-pulse text-neutral-600" : "text-neutral-300"
+        }`}
+      >
         {coach?.headline ?? "Reading the last sessions…"}
         {coach?.source === "rules" ? (
           <span className="ml-2 text-[11px] uppercase tracking-wide text-neutral-600">
@@ -183,72 +216,82 @@ export default function Tracker() {
       </p>
 
       {coach?.goals.length ? (
-        <div className="mb-8 flex gap-2 overflow-x-auto">
+        <div className="mb-6 flex gap-2 overflow-x-auto">
           {coach.goals.map((item) => {
             const meta = state?.exercises.find((exercise) => exercise.id === item.exerciseId);
             const logged = state?.today.exercises.find((log) => log.id === item.exerciseId);
             const done =
-              logged &&
-              totalReps(logged.sets) >= item.sets * item.reps * 0.8;
+              logged && totalReps(logged.sets) >= item.sets * item.reps * 0.8;
             return (
               <button
                 key={item.exerciseId}
                 type="button"
                 onClick={() => setSelected(item.exerciseId)}
-                className={`min-w-[160px] rounded-lg px-3 py-2 text-left ring-1 ${
+                className={`min-w-[168px] rounded-lg px-3 py-2 text-left ring-1 ${
                   selected === item.exerciseId
                     ? "ring-gold"
-                    : "ring-white/10 hover:ring-white/20"
+                    : "ring-white/10 hover:ring-white/25"
                 }`}
               >
                 <p className="text-[12px] text-neutral-400">{meta?.name ?? item.exerciseId}</p>
                 <p className={`font-mono text-[13px] ${done ? "text-gold" : "text-white"}`}>
                   {item.targetLabel}
                 </p>
+                <p className="mt-0.5 truncate text-[11px] text-neutral-600">{item.lastLabel}</p>
               </button>
             );
           })}
         </div>
-      ) : null}
-
-      {state ? (
-        <ExerciseGrid
-          exercises={state.exercises}
-          selected={selected}
-          onSelect={setSelected}
-          onAdd={addExercise}
-        />
-      ) : null}
-
-      {exercise ? (
-        <div className="mt-8">
-          <SetForm
-            exerciseName={exercise.name}
-            cue={exercise.cue}
-            goalLabel={goal?.targetLabel ?? null}
-            goalWhy={goal?.why ?? (last ? `last: ${last.date}` : null)}
-            hit={hit}
-            defaultWeight={defaultWeight}
-            defaultReps={goal?.reps ?? null}
-            pending={pending}
-            onSubmit={add}
-          />
+      ) : coachLoading ? (
+        <div className="mb-6 flex gap-2">
+          {[0, 1, 2].map((key) => (
+            <div key={key} className="h-16 min-w-[168px] animate-pulse rounded-lg bg-neutral-900" />
+          ))}
         </div>
       ) : null}
 
-      <section className="mt-10">
+      {exercise ? (
+        <SetForm
+          exerciseId={exercise.id}
+          exerciseName={exercise.name}
+          cue={exercise.cue}
+          image={exercise.image}
+          goalLabel={goal?.targetLabel ?? null}
+          goalWhy={goal?.why ?? (last ? `last: ${last.date}` : null)}
+          hit={hit}
+          defaultWeight={defaultWeight}
+          defaultReps={goal?.reps ?? null}
+          pending={pending}
+          onSubmit={add}
+        />
+      ) : null}
+
+      <section className="mt-6">
         <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-neutral-500">today</p>
         {state ? (
           <TodayLog
             workout={state.today}
             selected={selected}
+            flash={flash}
             onSelect={setSelected}
             onRemove={remove}
           />
         ) : null}
       </section>
 
-      <section className="mt-12 pb-16">
+      <section className="mt-8">
+        <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-neutral-500">lifts</p>
+        {state ? (
+          <ExerciseGrid
+            exercises={state.exercises}
+            selected={selected}
+            onSelect={setSelected}
+            onAdd={addExercise}
+          />
+        ) : null}
+      </section>
+
+      <section className="mt-10 pb-16">
         <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-neutral-500">progress</p>
         {exercise && state ? (
           <Progress name={exercise.name} points={state.progress[exercise.id] ?? []} />

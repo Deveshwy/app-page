@@ -56,8 +56,8 @@ export default function Progress({
           {delta !== 0 ? (
             <span className={delta > 0 ? "text-gold" : "text-neutral-500"}>
               {" "}
-              {delta > 0 ? "+" : ""}
-              {delta}
+              {delta > 0 ? "↑" : "↓"}
+              {Math.abs(delta)} vs last
             </span>
           ) : null}
         </p>
