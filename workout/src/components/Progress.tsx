@@ -1,6 +1,6 @@
 "use client";
 
-import { formatPretty } from "@/lib/dates";
+import { formatPretty, todayISO } from "@/lib/dates";
 import { formatNum } from "@/lib/format";
 import type { ProgressPoint } from "@/lib/types";
 
@@ -26,6 +26,12 @@ export default function Progress({
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = Math.max(1, max - min);
+  const today = todayISO();
+  const lastIsToday = points[points.length - 1].date === today;
+  const finished = lastIsToday ? points.slice(0, -1) : points;
+  const shown = finished.at(-1) ?? points[points.length - 1];
+  const prior = finished.length > 1 ? finished[finished.length - 2] : undefined;
+  const delta = prior ? shown.reps - prior.reps : 0;
 
   const coords = points.map((point, index) => {
     const x =
@@ -33,27 +39,29 @@ export default function Progress({
         ? width / 2
         : pad + (index / (points.length - 1)) * (width - pad * 2);
     const y = height - pad - ((point.reps - min) / span) * (height - pad * 2);
-    return { x, y, point };
+    return { x, y, point, live: lastIsToday && index === points.length - 1 };
   });
 
   const path = coords
     .map((coord, index) => `${index === 0 ? "M" : "L"}${coord.x} ${coord.y}`)
     .join(" ");
 
-  const latest = points[points.length - 1];
-  const previous = points[points.length - 2];
-  const delta = previous ? latest.reps - previous.reps : 0;
-
   return (
     <div>
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <p className="text-[13px] text-neutral-500">
-          {name.toLowerCase()} · {points.length} session{points.length === 1 ? "" : "s"}
+          {name.toLowerCase()} · {finished.length || points.length} session
+          {(finished.length || points.length) === 1 ? "" : "s"}
         </p>
         <p className="font-mono text-[13px] text-neutral-300">
-          {latest.reps} reps
-          {latest.weight != null ? ` @ ${formatNum(latest.weight)}lb` : ""}
-          {delta !== 0 ? (
+          {shown.reps} reps
+          {shown.weight != null ? ` @ ${formatNum(shown.weight)}lb` : ""}
+          {lastIsToday ? (
+            <span className="text-neutral-600">
+              {" "}
+              · {points[points.length - 1].reps} so far today
+            </span>
+          ) : delta !== 0 ? (
             <span className={delta > 0 ? "text-gold" : "text-neutral-500"}>
               {" "}
               {delta > 0 ? "↑" : "↓"}
@@ -70,7 +78,7 @@ export default function Progress({
             cx={coord.x}
             cy={coord.y}
             r="3.5"
-            fill="#e4c36a"
+            fill={coord.live ? "#737373" : "#e4c36a"}
           >
             <title>
               {formatPretty(coord.point.date)} · {coord.point.reps} reps
@@ -84,7 +92,7 @@ export default function Progress({
       <div className="mt-1 flex justify-between text-[11px] text-neutral-600">
         <span>{formatPretty(points[0].date)}</span>
         <span>best {max}</span>
-        <span>{formatPretty(latest.date)}</span>
+        <span>{formatPretty(points[points.length - 1].date)}</span>
       </div>
     </div>
   );

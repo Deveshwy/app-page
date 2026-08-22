@@ -15,7 +15,7 @@ export default function ExerciseGrid({
   onAdd: (name: string) => void;
 }) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="flex gap-2 overflow-x-auto pb-1 hide-scroll">
       {exercises.map((exercise, index) => {
         const active = exercise.id === selected;
         return (

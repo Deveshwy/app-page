@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { formatNum } from "@/lib/format";
 
@@ -77,15 +78,9 @@ export default function SetForm({
     >
       <div className="flex gap-4">
         {image ? (
-          <div
-            className="relative hidden h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-neutral-950 sm:block"
-            style={{
-              backgroundImage: `url(${image})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-            aria-hidden
-          />
+          <div className="relative hidden h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-neutral-950 sm:block">
+            <Image src={image} alt="" fill sizes="96px" className="object-cover" />
+          </div>
         ) : null}
         <div className="min-w-0 flex-1">
           <div className="mb-2 flex items-start justify-between gap-3">
@@ -109,7 +104,7 @@ export default function SetForm({
           ) : null}
 
           <div className="flex items-end gap-3">
-            <label className="flex-1">
+            <label className="w-[7.5rem] shrink-0">
               <span className="mb-1 block text-[11px] uppercase tracking-wide text-neutral-500">
                 weight
               </span>

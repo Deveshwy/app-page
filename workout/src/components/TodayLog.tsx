@@ -51,7 +51,7 @@ export default function TodayLog({
             >
               {exercise.name.toLowerCase()}
             </button>
-            <p className="text-right">
+            <p className="shrink-0 whitespace-nowrap text-right">
               {exercise.sets.map((set, index) => (
                 <span key={`${exercise.id}-${index}`}>
                   {index > 0 ? <span className="text-neutral-600"> + </span> : null}
@@ -59,7 +59,7 @@ export default function TodayLog({
                     type="button"
                     title="remove set"
                     onClick={() => onRemove(exercise.id, index)}
-                    className={`text-gold hover:line-through ${
+                    className={`min-w-[1.5rem] text-gold hover:text-white ${
                       flash?.exerciseId === exercise.id && flash.index === index
                         ? "underline decoration-gold"
                         : ""

@@ -216,7 +216,7 @@ export default function Tracker() {
       </p>
 
       {coach?.goals.length ? (
-        <div className="mb-6 flex gap-2 overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto pb-1 hide-scroll">
           {coach.goals.map((item) => {
             const meta = state?.exercises.find((exercise) => exercise.id === item.exerciseId);
             const logged = state?.today.exercises.find((log) => log.id === item.exerciseId);
@@ -227,7 +227,7 @@ export default function Tracker() {
                 key={item.exerciseId}
                 type="button"
                 onClick={() => setSelected(item.exerciseId)}
-                className={`min-w-[168px] rounded-lg px-3 py-2 text-left ring-1 ${
+                className={`min-w-[168px] shrink-0 rounded-lg px-3 py-2 text-left ring-1 ${
                   selected === item.exerciseId
                     ? "ring-gold"
                     : "ring-white/10 hover:ring-white/25"
@@ -236,6 +236,11 @@ export default function Tracker() {
                 <p className="text-[12px] text-neutral-400">{meta?.name ?? item.exerciseId}</p>
                 <p className={`font-mono text-[13px] ${done ? "text-gold" : "text-white"}`}>
                   {item.targetLabel}
+                  {logged ? (
+                    <span className="ml-1 text-neutral-500">
+                      {logged.sets.length}/{item.sets}
+                    </span>
+                  ) : null}
                 </p>
                 <p className="mt-0.5 truncate text-[11px] text-neutral-600">{item.lastLabel}</p>
               </button>
@@ -250,34 +255,38 @@ export default function Tracker() {
         </div>
       ) : null}
 
-      {exercise ? (
-        <SetForm
-          exerciseId={exercise.id}
-          exerciseName={exercise.name}
-          cue={exercise.cue}
-          image={exercise.image}
-          goalLabel={goal?.targetLabel ?? null}
-          goalWhy={goal?.why ?? (last ? `last: ${last.date}` : null)}
-          hit={hit}
-          defaultWeight={defaultWeight}
-          defaultReps={goal?.reps ?? null}
-          pending={pending}
-          onSubmit={add}
-        />
-      ) : null}
-
-      <section className="mt-6">
-        <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-neutral-500">today</p>
-        {state ? (
-          <TodayLog
-            workout={state.today}
-            selected={selected}
-            flash={flash}
-            onSelect={setSelected}
-            onRemove={remove}
+      <div className="grid items-start gap-8 md:grid-cols-[minmax(0,1fr)_200px]">
+        {exercise ? (
+          <SetForm
+            exerciseId={exercise.id}
+            exerciseName={exercise.name}
+            cue={exercise.cue}
+            image={exercise.image}
+            goalLabel={goal?.targetLabel ?? null}
+            goalWhy={goal?.why ?? (last ? `last: ${last.date}` : null)}
+            hit={hit}
+            defaultWeight={defaultWeight}
+            defaultReps={goal?.reps ?? null}
+            pending={pending}
+            onSubmit={add}
           />
-        ) : null}
-      </section>
+        ) : (
+          <div />
+        )}
+
+        <section>
+          <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-neutral-500">today</p>
+          {state ? (
+            <TodayLog
+              workout={state.today}
+              selected={selected}
+              flash={flash}
+              onSelect={setSelected}
+              onRemove={remove}
+            />
+          ) : null}
+        </section>
+      </div>
 
       <section className="mt-8">
         <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-neutral-500">lifts</p>
@@ -294,7 +303,10 @@ export default function Tracker() {
       <section className="mt-10 pb-16">
         <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-neutral-500">progress</p>
         {exercise && state ? (
-          <Progress name={exercise.name} points={state.progress[exercise.id] ?? []} />
+          <Progress
+            name={exercise.name}
+            points={state.progress[exercise.id] ?? []}
+          />
         ) : null}
       </section>
 
