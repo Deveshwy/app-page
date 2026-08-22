@@ -1,5 +1,6 @@
 import { formatNum, slugify, totalReps } from "./format";
-import type { Exercise, ExerciseLog, SetEntry, Workout } from "./types";
+import { kindOf } from "./overload";
+import type { Exercise, ExerciseLog, LiftKind, SetEntry, Workout } from "./types";
 
 const SET_TOKEN =
   /^(\d+(?:\.\d+)?)\s*(?:@\s*([\d.]+)\s*(?:lb|lbs|kg)?)?$/i;
@@ -110,10 +111,17 @@ export function parseExercises(markdown: string): Exercise[] {
       .map((item) => item.trim())
       .filter(Boolean);
 
+    const parsedKind: LiftKind | undefined =
+      fields.kind === "compound" || fields.kind === "isolation"
+        ? fields.kind
+        : undefined;
+    const id = fields.id || slugify(name);
+
     return {
-      id: fields.id || slugify(name),
+      id,
       name,
       group: fields.group || "other",
+      kind: kindOf({ id, kind: parsedKind }),
       image: fields.image || null,
       cue: fields.cue || "",
       aliases,
@@ -127,6 +135,7 @@ export function stringifyNewExercise(exercise: Exercise) {
     `## ${exercise.name}`,
     `id: ${exercise.id}`,
     `group: ${exercise.group}`,
+    `kind: ${exercise.kind}`,
   ];
   if (exercise.image) lines.push(`image: ${exercise.image}`);
   if (exercise.cue) lines.push(`cue: ${exercise.cue}`);

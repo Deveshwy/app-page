@@ -1,3 +1,15 @@
+export type LiftKind = "compound" | "isolation";
+
+export type CoachAction =
+  | "first_time"
+  | "fill_sets"
+  | "even_up"
+  | "add_reps"
+  | "add_weight"
+  | "hold"
+  | "deload"
+  | "optional";
+
 export type SetEntry = {
   reps: number;
   weight: number | null;
@@ -18,6 +30,7 @@ export type Exercise = {
   id: string;
   name: string;
   group: string;
+  kind: LiftKind;
   image: string | null;
   cue: string;
   aliases: string[];
@@ -45,6 +58,7 @@ export type Goal = {
   sets: number;
   reps: number;
   weight: number | null;
+  action: CoachAction;
 };
 
 export type CoachResult = {

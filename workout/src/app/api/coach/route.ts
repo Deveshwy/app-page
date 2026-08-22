@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { lunaCoach, rulesCoach } from "@/lib/coach";
+import { lunaCoach } from "@/lib/coach";
 import { isISODate, todayISO } from "@/lib/dates";
-import { listExercises, readWorkout, recentWorkouts } from "@/lib/store";
+import { listExercises, recentWorkouts } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +12,7 @@ export async function GET(request: NextRequest) {
   }
 
   const catalog = await listExercises();
-  const recent = await recentWorkouts(date, 10);
-  const today = await readWorkout(date, catalog);
-  const luna = await lunaCoach(date, catalog, recent, today);
-  return NextResponse.json(luna ?? rulesCoach(date, catalog, recent, today));
+  const recent = await recentWorkouts(date, 12);
+  const luna = await lunaCoach(date, catalog, recent);
+  return NextResponse.json(luna);
 }

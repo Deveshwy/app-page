@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { isISODate } from "./dates";
 import { lastWeight, totalReps, volumeOf } from "./format";
+import { kindOf } from "./overload";
 import {
   attachCatalog,
   parseExercises,
@@ -141,13 +142,15 @@ export async function addExercise(input: {
     const name = input.name.trim();
     if (name.length < 2) throw new Error("name too short");
     const catalog = await listExercises();
+    const id = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
     const exercise: Exercise = {
-      id: name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, ""),
+      id,
       name,
       group: (input.group ?? "other").trim() || "other",
+      kind: kindOf({ id }),
       image: null,
       cue: input.cue?.trim() ?? "",
       aliases: [],

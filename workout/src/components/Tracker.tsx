@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { addDays, formatLong, todayISO } from "@/lib/dates";
 import { lastWeight, totalReps } from "@/lib/format";
+import { actionLabel, remainingWhy } from "@/lib/overload";
 import type { AppState, CoachResult } from "@/lib/types";
 import ExerciseGrid from "./ExerciseGrid";
 import Heatmap from "./Heatmap";
@@ -72,6 +73,11 @@ export default function Tracker() {
   const todayLog = state?.today.exercises.find((item) => item.id === selected);
   const last = selected ? state?.lastByExercise[selected] : undefined;
   const goal = coach?.goals.find((item) => item.exerciseId === selected);
+  const goalWhy = goal
+    ? remainingWhy(goal.why, todayLog?.sets.length ?? 0, goal.sets)
+    : last
+      ? `last: ${last.date}`
+      : null;
 
   const hit = useMemo(() => {
     if (!todayLog || !goal) return false;
@@ -242,7 +248,10 @@ export default function Tracker() {
                     </span>
                   ) : null}
                 </p>
-                <p className="mt-0.5 truncate text-[11px] text-neutral-600">{item.lastLabel}</p>
+                <p className="mt-0.5 truncate text-[11px] text-neutral-600">
+                  <span className="text-gold/70">{actionLabel(item.action)}</span>
+                  {item.lastLabel !== "no history" ? ` · ${item.lastLabel}` : ""}
+                </p>
               </button>
             );
           })}
@@ -263,7 +272,7 @@ export default function Tracker() {
             cue={exercise.cue}
             image={exercise.image}
             goalLabel={goal?.targetLabel ?? null}
-            goalWhy={goal?.why ?? (last ? `last: ${last.date}` : null)}
+            goalWhy={goalWhy}
             hit={hit}
             defaultWeight={defaultWeight}
             defaultReps={goal?.reps ?? null}

@@ -49,14 +49,23 @@ Add a lift in the UI (`+`) or by appending a `## Name` block to `exercises.md`.
 
 ## Coach
 
-Without a key, a local rule engine does double progression (fill in 3 sets, add reps, then add 2.5 lb).
+Numbers come from TypeScript (`src/lib/overload.ts`). Luna only writes the headline and the one-line why.
 
-With a key, it calls [GPT-5.6 Luna](https://openrouter.ai/openai/gpt-5.6-luna) via OpenRouter:
+Without a key, you still get the same targets — just drier copy.
+
+With a key, it calls [GPT-5.6 Luna](https://openrouter.ai/openai/gpt-5.6-luna) via OpenRouter. Copy is cached in `data/.cache/` from the date + locked targets, so logging sets mid-session does not mutate the plan (the chips already show `1/3`).
 
 ```
 OPENROUTER_API_KEY=sk-or-...
 OPENROUTER_MODEL=openai/gpt-5.6-luna
 ```
+
+Rules the engine actually enforces:
+
+- Compounds (press, bench, row, squat, rdl): 3 × 8–12. Clean 3×12 at a logged weight and you trained this week → 3×8 a notch heavier. A week+ off → same weight, even sets, no bump.
+- Isolations: 3 × 10–15. Add reps before weight.
+- Messy or drop-off sets (17 then 10, or 12/8/14/13) → even working number, never chase the opener, never invent 13s.
+- No weight in the log → no `@ lb` on the target. Luna is not allowed to invent one.
 
 Keep `.env.local` on your machine. Never commit it.
 
