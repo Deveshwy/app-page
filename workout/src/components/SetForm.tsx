@@ -106,7 +106,7 @@ export default function SetForm({
           <div className="flex items-end gap-3">
             <label className="w-[7.5rem] shrink-0">
               <span className="mb-1 block text-[11px] uppercase tracking-wide text-neutral-500">
-                weight
+                weight (lb)
               </span>
               <span className="flex items-baseline gap-2 border-b border-white/10 focus-within:border-gold">
                 <input
@@ -120,7 +120,7 @@ export default function SetForm({
                   onChange={(event) => setWeight(event.target.value)}
                   className="w-full bg-transparent pb-1 font-mono text-lg outline-none"
                 />
-                <span className="pb-1 text-[12px] text-neutral-500">lb</span>
+                <span className="pb-1 text-[12px] text-neutral-300">lb</span>
               </span>
             </label>
             <label className="flex-[1.3]">

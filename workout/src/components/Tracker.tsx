@@ -255,7 +255,7 @@ export default function Tracker() {
         </div>
       ) : null}
 
-      <div className="grid items-start gap-8 md:grid-cols-[minmax(0,1fr)_200px]">
+      <div className="grid items-start gap-8 md:grid-cols-[minmax(0,1fr)_240px]">
         {exercise ? (
           <SetForm
             exerciseId={exercise.id}

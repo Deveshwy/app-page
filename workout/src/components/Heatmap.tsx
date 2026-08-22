@@ -79,7 +79,7 @@ export default function Heatmap({
         </div>
         <div>
           <div
-            className="relative mb-1 h-4 text-[11px] text-neutral-400"
+            className="relative mb-1 h-4 text-[12px] text-neutral-400"
             style={{ display: "grid", gridTemplateColumns: "repeat(53, minmax(0, 1fr))" }}
           >
             {months.map((month) => (
