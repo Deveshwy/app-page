@@ -4,6 +4,42 @@ import type { CoachResult, Exercise, ExerciseLog, Goal, Workout } from "./types"
 
 const MODEL = process.env.OPENROUTER_MODEL ?? "openai/gpt-5.6-luna";
 
+const SYSTEM_PROMPT = `You are this person's home-gym trainer. They train with dumbbells at home. A bench and adjustable bells are coming; until then, no barbells, no machines, no cable work.
+
+Tone: calm, specific, standing next to them. One-sentence why. No hype, no emojis, no markdown, no lectures.
+
+Progressive overload (tiny):
+- Compounds (shoulder-press, bench-press, dumbbell-row, goblet-squat, rdl): 3 sets of 8–12. If they hit 3×12, next time +2.5lb and 3×8. Never prescribe 13+ on a compound.
+- Isolations (lateral-raise, bicep-curl, hammer-curl, forearm-curl, tricep-extension): 3 sets of 10–15 is fine. Add 1–2 reps before adding weight.
+- If they only logged 1–2 sets, the goal is 3 even sets, not a bigger single set.
+- If sets dropped off (17 then 10), prescribe even sets around the typical/lower working number, not the opener.
+- If sets were messy (12, 8, 14, 13), clean up to 3 even sets around the median, rounded to 10 or 12, not 13.
+- Week+ off: same weight, cleaner sets. Do not chase a PR.
+- Never invent a weight. If history has no lb, weight is null and targetLabel has no @.
+- If "Already logged today" is "(nothing)", do not mention sets they did today. Do not copy weights from the example JSON.
+
+JSON only:
+{
+  "headline": "one sentence for the whole session",
+  "goals": [
+    {
+      "exerciseId": "shoulder-press",
+      "targetLabel": "3 × 10",
+      "why": "cites the last date and numbers",
+      "sets": 3,
+      "reps": 10,
+      "weight": null
+    }
+  ]
+}
+
+Goal list:
+- 3–4 goals.
+- Start with the lifts from the latest session (skip any already finished today).
+- If a lift is mid-way today, prescribe only the remaining sets.
+- If legs or back are missing from the last 3 sessions, last goal is ONE optional: goblet-squat, rdl, or dumbbell-row. why must start with "Optional:"
+- exerciseId must come from the catalog.`;
+
 function findLastLog(workouts: Workout[], exerciseId: string, before: string) {
   for (let i = workouts.length - 1; i >= 0; i--) {
     const workout = workouts[i];
@@ -37,7 +73,7 @@ function suggestFromLast(log: ExerciseLog): Pick<Goal, "sets" | "reps" | "weight
   }
 
   if (n < 3) {
-    const targetReps = Math.max(10, Math.round(avg));
+    const targetReps = Math.min(12, Math.max(8, Math.round(avg)));
     return {
       sets: 3,
       reps: targetReps,
@@ -128,16 +164,15 @@ export function rulesCoach(
       return meta?.group === "legs";
     }),
   );
+
+  let headline = headlineFor(date, recent, today, goals);
   if (!hasLegs && catalog.some((exercise) => exercise.id === "goblet-squat")) {
-    const first = goals[0];
-    if (first) {
-      first.why += " (legs are untouched — goblet squat whenever you have 10 minutes)";
-    }
+    headline += " Legs haven't shown up — goblet squat is sitting there.";
   }
 
   return {
     source: "rules",
-    headline: headlineFor(date, recent, today, goals),
+    headline,
     goals,
   };
 }
@@ -161,6 +196,104 @@ function extractJson(text: string) {
   };
 }
 
+function formatWorkoutBlock(workout: Workout) {
+  if (!workout.exercises.length) return "(nothing)";
+  return workout.exercises
+    .map((log) => `  ${log.name}: ${formatSets(log.sets)}`)
+    .join("\n");
+}
+
+function userPrompt(
+  date: string,
+  catalog: Exercise[],
+  recent: Workout[],
+  today: Workout,
+) {
+  const previous = [...recent].reverse().find((workout) => workout.date < date);
+  const gap = previous ? daysBetween(previous.date, date) : null;
+  const catalogLines = catalog
+    .map((exercise) => `${exercise.id} — ${exercise.name} (${exercise.group})`)
+    .join("\n");
+  const history = recent
+    .filter((workout) => workout.date < date)
+    .map((workout) => `${workout.date}\n${formatWorkoutBlock(workout)}`)
+    .join("\n\n");
+
+  const gapLine =
+    gap == null
+      ? "No previous session on file."
+      : `${gap} day${gap === 1 ? "" : "s"} since the last session (${previous?.date}).`;
+
+  return `Today is ${date}. ${gapLine}
+
+Catalog:
+${catalogLines}
+
+History (oldest first):
+${history || "(none)"}
+
+Already logged today:
+${formatWorkoutBlock(today)}
+
+Write today's goals.`;
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function knownWeight(last: ExerciseLog | undefined, todayLog: ExerciseLog | undefined) {
+  return lastWeight(todayLog?.sets ?? []) ?? lastWeight(last?.sets ?? []) ?? null;
+}
+
+function stripInventedWeight(label: string, weight: number | null) {
+  if (weight != null) return label;
+  return label.replace(/\s*@\s*[\d.]+(?:lb|lbs|kg)?/gi, "").trim();
+}
+
+function hydrateGoals(
+  parsed: ReturnType<typeof extractJson>,
+  catalog: Exercise[],
+  recent: Workout[],
+  today: Workout,
+  date: string,
+) {
+  return (parsed.goals ?? [])
+    .map((goal) => {
+      const id = goal.exerciseId ?? "";
+      const exercise = catalog.find((item) => item.id === id);
+      if (!exercise) return null;
+      const last = findLastLog(recent, id, date);
+      const todayLog = today.exercises.find((item) => item.id === id);
+      const sets = clamp(Math.round(Number(goal.sets) || 3), 1, 6);
+      const reps = clamp(Math.round(Number(goal.reps) || 10), 1, 30);
+      const known = knownWeight(last?.log, todayLog);
+      const proposed = Number(goal.weight);
+      const weight =
+        known == null
+          ? null
+          : Number.isFinite(proposed) && proposed > 0
+            ? proposed
+            : known;
+      const label =
+        stripInventedWeight(goal.targetLabel?.trim() || "", weight) ||
+        formatTarget(sets, reps, weight);
+      return {
+        exerciseId: id,
+        lastLabel: last
+          ? `${formatSets(last.log.sets)} · ${formatPretty(last.date)}`
+          : "no history",
+        targetLabel: label,
+        why: (goal.why || "").trim() || "Beat last time by a little.",
+        sets,
+        reps,
+        weight,
+      } satisfies Goal;
+    })
+    .filter((goal): goal is Goal => Boolean(goal))
+    .slice(0, 4);
+}
+
 export async function lunaCoach(
   date: string,
   catalog: Exercise[],
@@ -171,21 +304,8 @@ export async function lunaCoach(
   if (!key) return null;
 
   const fallback = rulesCoach(date, catalog, recent, today);
-  const history = recent
-    .map((workout) => {
-      const lines = workout.exercises
-        .map((log) => `  ${log.name}: ${formatSets(log.sets)}`)
-        .join("\n");
-      return `${workout.date}\n${lines}`;
-    })
-    .join("\n\n");
-
-  const catalogLines = catalog
-    .map((exercise) => `${exercise.id} (${exercise.name}, ${exercise.group})`)
-    .join(", ");
-
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
+  const timer = setTimeout(() => controller.abort(), 25000);
 
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -199,87 +319,46 @@ export async function lunaCoach(
       },
       body: JSON.stringify({
         model: MODEL,
-        temperature: 0.4,
+        temperature: 0.2,
+        reasoning: { effort: "low" },
+        response_format: { type: "json_object" },
         messages: [
-          {
-            role: "system",
-            content:
-              "You are a terse home-gym trainer. Dumbbells only, maybe a bench. Progressive overload: add 1–2 reps or 2.5lb, never both wildly. Prefer 3 sets of 8–12. Talk like a person, not an app. Reply JSON only.",
-          },
-          {
-            role: "user",
-            content: `Today is ${date}.
-Exercises (use these ids): ${catalogLines}
-
-Recent sessions:
-${history || "(none)"}
-
-Already logged today:
-${
-  today.exercises.length
-    ? today.exercises.map((log) => `${log.name}: ${formatSets(log.sets)}`).join("\n")
-    : "(nothing yet)"
-}
-
-Return JSON:
-{
-  "headline": "one short trainer sentence",
-  "goals": [
-    {
-      "exerciseId": "shoulder-press",
-      "targetLabel": "3 × 12 @ 20lb",
-      "why": "one sentence",
-      "sets": 3,
-      "reps": 12,
-      "weight": 20
-    }
-  ]
-}
-
-Max 4 goals. Mostly the lifts they already do. Do not invent barbell or machine work.`,
-          },
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt(date, catalog, recent, today) },
         ],
       }),
     });
 
-    if (!response.ok) return fallback;
+    if (!response.ok) {
+      const body = await response.text();
+      console.error("[coach] openrouter", response.status, body.slice(0, 400));
+      return fallback;
+    }
+
     const payload = (await response.json()) as {
+      model?: string;
       choices?: Array<{ message?: { content?: string } }>;
     };
     const content = payload.choices?.[0]?.message?.content;
-    if (!content) return fallback;
-    const parsed = extractJson(content);
-    const goals = (parsed.goals ?? [])
-      .map((goal) => {
-        const id = goal.exerciseId ?? "";
-        const exercise = catalog.find((item) => item.id === id);
-        if (!exercise) return null;
-        const last = findLastLog(recent, id, date);
-        const sets = Number(goal.sets) || 3;
-        const reps = Number(goal.reps) || 10;
-        const weight = goal.weight ?? lastWeight(last?.log.sets ?? []) ?? null;
-        return {
-          exerciseId: id,
-          lastLabel: last
-            ? `${formatSets(last.log.sets)} · ${formatPretty(last.date)}`
-            : "no history",
-          targetLabel: goal.targetLabel || formatTarget(sets, reps, weight),
-          why: (goal.why || "").trim() || "Beat last time by a little.",
-          sets,
-          reps,
-          weight,
-        } satisfies Goal;
-      })
-      .filter((goal): goal is Goal => Boolean(goal))
-      .slice(0, 4);
+    if (!content) {
+      console.error("[coach] empty luna content", payload.model);
+      return fallback;
+    }
 
-    if (!goals.length) return fallback;
+    const parsed = extractJson(content);
+    const goals = hydrateGoals(parsed, catalog, recent, today, date);
+    if (!goals.length) {
+      console.error("[coach] luna returned no usable goals", content.slice(0, 400));
+      return fallback;
+    }
+
     return {
       source: "luna",
       headline: parsed.headline?.trim() || fallback.headline,
       goals,
     };
-  } catch {
+  } catch (error) {
+    console.error("[coach] luna failed", error);
     return fallback;
   } finally {
     clearTimeout(timer);
